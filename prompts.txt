@@ -1,0 +1,9 @@
+# Alpha test prompts — commit to these before running.
+# Pass condition: >=3 of 5 look usable as prototyping placeholders in a
+# Bevy scene at gameplay camera distance. Do not move the goalposts.
+
+1. realistic_natural | A rough granite boulder, mossy and weathered, with cracks and small patches of lichen.
+2. fantasy_weapon    | An iron longsword with a leather-wrapped grip, steel crossguard, and a rounded pommel, on a plain background.
+3. primitive_fantasy | A primitive spear with a polished obsidian head and a wooden shaft wrapped in leather sinew.
+4. scifi_hardsurface | A handheld plasma cutter, sleek matte-gray industrial design, with a glowing orange power core and worn rubber grip.
+5. medieval_labrat   | A wooden barrel, oak staves bound by rusted iron hoops, slightly weathered.
