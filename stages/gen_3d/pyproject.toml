@@ -11,6 +11,7 @@ dependencies = [
     "torch==2.6.0",
     "torchvision==0.21.0",
     "triton==3.2.0",
+    "setuptools",
     "pillow==12.0.0",
     "matplotlib",
     "rembg",
@@ -26,7 +27,10 @@ dependencies = [
     "transformers==4.57.3",
     "diffusers @ git+https://github.com/huggingface/diffusers.git@refs/pull/12790/head",
     "utils3d @ git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8",
-    "trellis2 @ git+https://github.com/microsoft/TRELLIS.2.git",
+    # NOTE: trellis2 itself isn't pip-installable. Clone the repo separately and
+    # add it to PYTHONPATH:
+    #   git clone https://github.com/microsoft/TRELLIS.2.git /workspace/trellis2-src
+    #   export PYTHONPATH=/workspace/trellis2-src:$PYTHONPATH
     "flash-attn-3 @ https://github.com/JeffreyXiang/Storages/releases/download/Space_Wheels_251210/flash_attn_3-3.0.0b1-cp39-abi3-linux_x86_64.whl",
     "cumesh @ https://github.com/JeffreyXiang/Storages/releases/download/Space_Wheels_251210/cumesh-0.0.1-cp310-cp310-linux_x86_64.whl",
     "flex-gemm @ https://github.com/JeffreyXiang/Storages/releases/download/Space_Wheels_251210/flex_gemm-0.0.1-cp310-cp310-linux_x86_64.whl",
