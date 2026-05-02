@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "Text-to-3D game asset pipeline orchestrator (alpha PoC)"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "python-multipart",
+]
 
 [build-system]
 requires = ["hatchling"]

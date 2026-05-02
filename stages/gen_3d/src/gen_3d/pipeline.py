@@ -1,4 +1,3 @@
-import argparse
 import logging
 import os
 import time
@@ -26,7 +25,8 @@ DECIMATION_TARGET = 150000
 TEXTURE_SIZE = 1024
 
 
-def generate(image_path: Path, seed: int, out_path: Path) -> None:
+def load_pipeline() -> Trellis2ImageTo3DPipeline:
+    """Load TRELLIS.2-4B onto GPU with CPU offload. Slow: ~5min cold (NFS reads + deserialize)."""
     logger.info("torch backend: device=cuda")
     logger.info("cuda device: name=%s", torch.cuda.get_device_name(0))
 
@@ -38,7 +38,16 @@ def generate(image_path: Path, seed: int, out_path: Path) -> None:
     pipeline.low_vram = True
     pipeline.cuda()
     logger.info("pipeline loaded in %.1fs", time.perf_counter() - t0)
+    return pipeline
 
+
+def run_inference(
+    pipeline: Trellis2ImageTo3DPipeline,
+    image_path: Path,
+    seed: int,
+    out_path: Path,
+) -> None:
+    """Generate one GLB with a pre-loaded pipeline."""
     logger.info("loading image: %s", image_path)
     image = Image.open(image_path)
 
@@ -77,23 +86,3 @@ def generate(image_path: Path, seed: int, out_path: Path) -> None:
     glb.export(out_path, extension_webp=True)
     logger.info("GLB exported in %.1fs", time.perf_counter() - t2)
     logger.info("saved: %s", out_path)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Stage 2: image -> 3D model (TRELLIS.2-4B).")
-    parser.add_argument("--image", type=Path, required=True, help="Input image.")
-    parser.add_argument("--seed", type=int, required=True, help="RNG seed for reproducibility.")
-    parser.add_argument("--out", type=Path, required=True, help="Output GLB path.")
-    args = parser.parse_args()
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
-
-    generate(args.image, args.seed, args.out)
-
-
-if __name__ == "__main__":
-    main()
