@@ -33,7 +33,9 @@ def generate(image_path: Path, seed: int, out_path: Path) -> None:
     logger.info("loading pipeline: model=%s", MODEL_ID)
     t0 = time.perf_counter()
     pipeline = Trellis2ImageTo3DPipeline.from_pretrained(MODEL_ID)
-    pipeline.low_vram = False
+    # 24 GB cards (A5000/A10/4090) need CPU offload to avoid OOM during mesh
+    # post-processing. Adds ~30-60s to total runtime.
+    pipeline.low_vram = True
     pipeline.cuda()
     logger.info("pipeline loaded in %.1fs", time.perf_counter() - t0)
 
