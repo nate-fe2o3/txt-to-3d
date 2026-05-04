@@ -1,5 +1,7 @@
+import io
 import logging
 import os
+import tempfile
 import time
 from pathlib import Path
 
@@ -43,13 +45,12 @@ def load_pipeline() -> Trellis2ImageTo3DPipeline:
 
 def run_inference(
     pipeline: Trellis2ImageTo3DPipeline,
-    image_path: Path,
+    image_bytes: bytes,
     seed: int,
-    out_path: Path,
-) -> None:
-    """Generate one GLB with a pre-loaded pipeline."""
-    logger.info("loading image: %s", image_path)
-    image = Image.open(image_path)
+) -> bytes:
+    """Generate one GLB with a pre-loaded pipeline. Returns GLB bytes."""
+    image = Image.open(io.BytesIO(image_bytes))
+    logger.info("loaded input image: %dx%d mode=%s", image.width, image.height, image.mode)
 
     logger.info("generating 3D: seed=%d pipeline_type=%s", seed, PIPELINE_TYPE)
     t1 = time.perf_counter()
@@ -82,7 +83,15 @@ def run_inference(
         remesh_project=0,
         use_tqdm=True,
     )
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    glb.export(out_path, extension_webp=True)
-    logger.info("GLB exported in %.1fs", time.perf_counter() - t2)
-    logger.info("saved: %s", out_path)
+
+    # `extension_webp=True` requires a file path (it writes textures as separate WebP
+    # files alongside the GLB during export). Tempfile + read-back, then delete.
+    with tempfile.NamedTemporaryFile(suffix=".glb", delete=False) as f:
+        tmp_path = Path(f.name)
+    try:
+        glb.export(tmp_path, extension_webp=True)
+        glb_bytes = tmp_path.read_bytes()
+    finally:
+        tmp_path.unlink(missing_ok=True)
+    logger.info("GLB exported in %.1fs (%d bytes)", time.perf_counter() - t2, len(glb_bytes))
+    return glb_bytes

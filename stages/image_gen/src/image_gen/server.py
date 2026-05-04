@@ -1,16 +1,16 @@
 """FastAPI worker for stage 1 (text -> image, FLUX.2-klein-4B).
 
 Loads the pipeline once at startup and reuses it across requests.
-Run with: uvicorn image_gen.server:app --host 0.0.0.0 --port 8001
+Run with: uvicorn image_gen.server:app --host 0.0.0.0 --port 9001
 """
 
 from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from .pipeline import load_pipeline, run_inference
@@ -40,18 +40,12 @@ app = FastAPI(title="image-gen worker", lifespan=lifespan)
 class GenerateRequest(BaseModel):
     prompt: str
     seed: int
-    out_path: str
 
 
-class GenerateResponse(BaseModel):
-    out_path: str
-
-
-@app.post("/generate", response_model=GenerateResponse)
-def generate(req: GenerateRequest) -> GenerateResponse:
-    out = Path(req.out_path)
-    run_inference(_pipeline, req.prompt, req.seed, out)
-    return GenerateResponse(out_path=str(out))
+@app.post("/generate")
+def generate(req: GenerateRequest) -> Response:
+    png_bytes = run_inference(_pipeline, req.prompt, req.seed)
+    return Response(content=png_bytes, media_type="image/png")
 
 
 @app.get("/health")

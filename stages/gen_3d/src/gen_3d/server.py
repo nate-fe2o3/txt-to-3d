@@ -1,17 +1,17 @@
 """FastAPI worker for stage 2 (image -> 3D, TRELLIS.2-4B).
 
 Loads the pipeline once at startup and reuses it across requests.
-Run with: uvicorn gen_3d.server:app --host 0.0.0.0 --port 8002
+Run with: uvicorn gen_3d.server:app --host 0.0.0.0 --port 9002
 """
 
 from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import Body, FastAPI, Query
+from fastapi.responses import Response
 
 from .pipeline import load_pipeline, run_inference
 
@@ -37,21 +37,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="gen-3d worker", lifespan=lifespan)
 
 
-class GenerateRequest(BaseModel):
-    image_path: str
-    seed: int
-    out_path: str
-
-
-class GenerateResponse(BaseModel):
-    out_path: str
-
-
-@app.post("/generate", response_model=GenerateResponse)
-def generate(req: GenerateRequest) -> GenerateResponse:
-    out = Path(req.out_path)
-    run_inference(_pipeline, Path(req.image_path), req.seed, out)
-    return GenerateResponse(out_path=str(out))
+@app.post("/generate")
+def generate(
+    image: Annotated[bytes, Body(media_type="application/octet-stream")],
+    seed: Annotated[int, Query()],
+) -> Response:
+    glb_bytes = run_inference(_pipeline, image, seed)
+    return Response(content=glb_bytes, media_type="model/gltf-binary")
 
 
 @app.get("/health")

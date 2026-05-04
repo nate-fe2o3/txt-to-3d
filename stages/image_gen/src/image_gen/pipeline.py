@@ -1,6 +1,6 @@
+import io
 import logging
 import time
-from pathlib import Path
 
 import torch
 from diffusers import Flux2KleinPipeline
@@ -35,8 +35,8 @@ def load_pipeline() -> Flux2KleinPipeline:
     return pipeline
 
 
-def run_inference(pipeline: Flux2KleinPipeline, prompt: str, seed: int, out_path: Path) -> None:
-    """Generate one image with a pre-loaded pipeline."""
+def run_inference(pipeline: Flux2KleinPipeline, prompt: str, seed: int) -> bytes:
+    """Generate one image with a pre-loaded pipeline. Returns PNG bytes."""
     full_prompt = prompt + FRAMING_SUFFIX
     # With cpu_offload, pipeline.device reports CPU (resident location). For the generator
     # we want the execution device — the one where computation actually happens.
@@ -44,7 +44,6 @@ def run_inference(pipeline: Flux2KleinPipeline, prompt: str, seed: int, out_path
     generator = torch.Generator(device=gen_device).manual_seed(seed)
     logger.info("generating: seed=%d resolution=1024x1024 prompt=%r", seed, full_prompt)
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     t0 = time.perf_counter()
     image = pipeline(
         prompt=full_prompt,
@@ -54,5 +53,8 @@ def run_inference(pipeline: Flux2KleinPipeline, prompt: str, seed: int, out_path
     ).images[0]
     logger.info("generation complete in %.1fs", time.perf_counter() - t0)
 
-    image.save(out_path)
-    logger.info("saved: %s", out_path)
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    png_bytes = buf.getvalue()
+    logger.info("encoded PNG: %d bytes", len(png_bytes))
+    return png_bytes
