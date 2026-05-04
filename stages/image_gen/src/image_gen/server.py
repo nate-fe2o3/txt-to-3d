@@ -6,6 +6,7 @@ Run with: uvicorn image_gen.server:app --host 0.0.0.0 --port 9001
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -19,6 +20,11 @@ logger = logging.getLogger(__name__)
 
 # Module-level cache of the loaded pipeline. Populated by `lifespan` at startup.
 _pipeline = None
+
+# One GPU, one model — only one inference may run at a time. Sized as a
+# Semaphore (not a Lock) so the cap is an obvious knob if a future stage gains
+# headroom for parallelism.
+_inference_sem = asyncio.Semaphore(1)
 
 
 @asynccontextmanager
@@ -43,8 +49,9 @@ class GenerateRequest(BaseModel):
 
 
 @app.post("/generate")
-def generate(req: GenerateRequest) -> Response:
-    png_bytes = run_inference(_pipeline, req.prompt, req.seed)
+async def generate(req: GenerateRequest) -> Response:
+    async with _inference_sem:
+        png_bytes = await asyncio.to_thread(run_inference, _pipeline, req.prompt, req.seed)
     return Response(content=png_bytes, media_type="image/png")
 
 

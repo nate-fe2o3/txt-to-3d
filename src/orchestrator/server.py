@@ -80,7 +80,10 @@ async def _call_image_worker(prompt: str, seed: int) -> bytes:
         raise HTTPException(status_code=504, detail=f"image_gen worker timed out after {IMAGE_GEN_TIMEOUT}s") from e
 
     if resp.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"image_gen worker error: {resp.text}")
+        raise HTTPException(
+            status_code=resp.status_code,
+            detail=f"image_gen worker {resp.status_code}: {resp.text}",
+        )
     return resp.content
 
 
@@ -100,7 +103,10 @@ async def _call_3d_worker(image_bytes: bytes, seed: int) -> bytes:
         raise HTTPException(status_code=504, detail=f"gen_3d worker timed out after {GEN_3D_TIMEOUT}s") from e
 
     if resp.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"gen_3d worker error: {resp.text}")
+        raise HTTPException(
+            status_code=resp.status_code,
+            detail=f"gen_3d worker {resp.status_code}: {resp.text}",
+        )
     return resp.content
 
 

@@ -49,7 +49,9 @@ def run_inference(
     seed: int,
 ) -> bytes:
     """Generate one GLB with a pre-loaded pipeline. Returns GLB bytes."""
-    image = Image.open(io.BytesIO(image_bytes))
+    # TRELLIS-2 handles bg removal itself, so RGB is sufficient. Forcing the mode
+    # normalizes RGBA / palette / 16-bit inputs into the one form the pipeline accepts.
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     logger.info("loaded input image: %dx%d mode=%s", image.width, image.height, image.mode)
 
     logger.info("generating 3D: seed=%d pipeline_type=%s", seed, PIPELINE_TYPE)
@@ -84,8 +86,6 @@ def run_inference(
         use_tqdm=True,
     )
 
-    # `extension_webp=True` requires a file path (it writes textures as separate WebP
-    # files alongside the GLB during export). Tempfile + read-back, then delete.
     with tempfile.NamedTemporaryFile(suffix=".glb", delete=False) as f:
         tmp_path = Path(f.name)
     try:

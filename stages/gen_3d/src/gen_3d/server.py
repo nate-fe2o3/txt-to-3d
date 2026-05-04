@@ -6,6 +6,7 @@ Run with: uvicorn gen_3d.server:app --host 0.0.0.0 --port 9002
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -19,6 +20,11 @@ logger = logging.getLogger(__name__)
 
 # Module-level cache of the loaded pipeline. Populated by `lifespan` at startup.
 _pipeline = None
+
+# One GPU, one model — only one inference may run at a time. Sized as a
+# Semaphore (not a Lock) so the cap is an obvious knob if a future stage gains
+# headroom for parallelism.
+_inference_sem = asyncio.Semaphore(1)
 
 
 @asynccontextmanager
@@ -38,11 +44,12 @@ app = FastAPI(title="gen-3d worker", lifespan=lifespan)
 
 
 @app.post("/generate")
-def generate(
+async def generate(
     image: Annotated[bytes, Body(media_type="application/octet-stream")],
     seed: Annotated[int, Query()],
 ) -> Response:
-    glb_bytes = run_inference(_pipeline, image, seed)
+    async with _inference_sem:
+        glb_bytes = await asyncio.to_thread(run_inference, _pipeline, image, seed)
     return Response(content=glb_bytes, media_type="model/gltf-binary")
 
 

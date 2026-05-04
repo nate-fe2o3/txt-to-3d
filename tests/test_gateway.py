@@ -124,12 +124,19 @@ class TestImage:
         assert r.status_code == 504
         assert "image_gen" in r.json()["detail"]
 
-    def test_worker_500_returns_502(self, client):
+    def test_worker_500_passes_through(self, client):
         with respx.mock:
             respx.post(f"{IMAGE_GEN_URL}/generate").mock(return_value=httpx.Response(500, text="model OOM"))
             r = client.post("/image", json={"prompt": "a barrel"})
-        assert r.status_code == 502
+        assert r.status_code == 500
         assert "model OOM" in r.json()["detail"]
+
+    def test_worker_422_passes_through(self, client):
+        with respx.mock:
+            respx.post(f"{IMAGE_GEN_URL}/generate").mock(return_value=httpx.Response(422, text="bad prompt"))
+            r = client.post("/image", json={"prompt": "a barrel"})
+        assert r.status_code == 422
+        assert "bad prompt" in r.json()["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -182,11 +189,18 @@ class Test3D:
             r = client.post("/3d", files={"image": ("img.png", PNG_BYTES, "image/png")})
         assert r.status_code == 504
 
-    def test_worker_500_returns_502(self, client):
+    def test_worker_500_passes_through(self, client):
         with respx.mock:
             respx.post(f"{GEN_3D_URL}/generate").mock(return_value=httpx.Response(500, text="OOM"))
             r = client.post("/3d", files={"image": ("img.png", PNG_BYTES, "image/png")})
-        assert r.status_code == 502
+        assert r.status_code == 500
+
+    def test_worker_422_passes_through(self, client):
+        with respx.mock:
+            respx.post(f"{GEN_3D_URL}/generate").mock(return_value=httpx.Response(422, text="bad image"))
+            r = client.post("/3d", files={"image": ("img.png", PNG_BYTES, "image/png")})
+        assert r.status_code == 422
+        assert "bad image" in r.json()["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -248,7 +262,7 @@ class TestTextTo3D:
             route_3d = respx.post(f"{GEN_3D_URL}/generate").mock(return_value=httpx.Response(200, content=GLB_BYTES))
             r = client.post("/text-to-3d", json={"prompt": "a barrel"})
         # gen_3d must not be called if image_gen failed.
-        assert r.status_code == 502
+        assert r.status_code == 500
         assert route_3d.call_count == 0
 
     def test_3d_failure_after_image_success(self, client):
@@ -256,7 +270,15 @@ class TestTextTo3D:
             respx.post(f"{IMAGE_GEN_URL}/generate").mock(return_value=httpx.Response(200, content=PNG_BYTES))
             respx.post(f"{GEN_3D_URL}/generate").mock(return_value=httpx.Response(500, text="OOM"))
             r = client.post("/text-to-3d", json={"prompt": "a barrel"})
-        assert r.status_code == 502
+        assert r.status_code == 500
+        assert "gen_3d" in r.json()["detail"]
+
+    def test_3d_422_passes_through(self, client):
+        with respx.mock:
+            respx.post(f"{IMAGE_GEN_URL}/generate").mock(return_value=httpx.Response(200, content=PNG_BYTES))
+            respx.post(f"{GEN_3D_URL}/generate").mock(return_value=httpx.Response(422, text="bad image"))
+            r = client.post("/text-to-3d", json={"prompt": "a barrel"})
+        assert r.status_code == 422
         assert "gen_3d" in r.json()["detail"]
 
     def test_image_gen_unreachable_returns_503(self, client):

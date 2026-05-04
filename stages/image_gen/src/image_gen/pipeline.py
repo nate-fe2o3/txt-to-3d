@@ -19,7 +19,7 @@ def load_pipeline() -> Flux2KleinPipeline:
     leaving headroom for TRELLIS. Costs ~5-15s per request for CPU<->GPU transfers.
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype = torch.float16 if device == "cuda" else torch.float32
+    dtype = torch.bfloat16 if device == "cuda" else torch.float32
     logger.info("torch backend: device=%s dtype=%s", device, dtype)
     if device == "cuda":
         logger.info("cuda device: name=%s", torch.cuda.get_device_name(0))
