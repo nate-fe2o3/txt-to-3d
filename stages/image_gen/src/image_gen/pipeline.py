@@ -12,7 +12,12 @@ MODEL_ID = "black-forest-labs/FLUX.2-klein-4B"
 
 
 def load_pipeline() -> Flux2KleinPipeline:
-    """Load FLUX.2-klein-4B onto the available device. Slow: ~30s + weight download on first call."""
+    """Load FLUX.2-klein-4B with CPU offload so it can share a GPU with the gen_3d worker.
+
+    Without offload, FLUX.2-klein holds ~20 GB on GPU (transformer + Qwen3 text encoder +
+    VAE all resident). With offload, only the active component lives on GPU at any moment,
+    leaving headroom for TRELLIS. Costs ~5-15s per request for CPU<->GPU transfers.
+    """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.float16 if device == "cuda" else torch.float32
     logger.info("torch backend: device=%s dtype=%s", device, dtype)
@@ -21,7 +26,11 @@ def load_pipeline() -> Flux2KleinPipeline:
 
     logger.info("loading pipeline: model=%s", MODEL_ID)
     t0 = time.perf_counter()
-    pipeline = Flux2KleinPipeline.from_pretrained(MODEL_ID, torch_dtype=dtype).to(device)
+    pipeline = Flux2KleinPipeline.from_pretrained(MODEL_ID, torch_dtype=dtype)
+    if device == "cuda":
+        pipeline.enable_model_cpu_offload()
+    else:
+        pipeline = pipeline.to(device)
     logger.info("pipeline loaded in %.1fs", time.perf_counter() - t0)
     return pipeline
 
@@ -29,7 +38,10 @@ def load_pipeline() -> Flux2KleinPipeline:
 def run_inference(pipeline: Flux2KleinPipeline, prompt: str, seed: int, out_path: Path) -> None:
     """Generate one image with a pre-loaded pipeline."""
     full_prompt = prompt + FRAMING_SUFFIX
-    generator = torch.Generator(device=pipeline.device).manual_seed(seed)
+    # With cpu_offload, pipeline.device reports CPU (resident location). For the generator
+    # we want the execution device — the one where computation actually happens.
+    gen_device = "cuda" if torch.cuda.is_available() else "cpu"
+    generator = torch.Generator(device=gen_device).manual_seed(seed)
     logger.info("generating: seed=%d resolution=1024x1024 prompt=%r", seed, full_prompt)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
