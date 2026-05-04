@@ -29,8 +29,7 @@ def load_pipeline() -> Flux2KleinPipeline:
 def run_inference(pipeline: Flux2KleinPipeline, prompt: str, seed: int, out_path: Path) -> None:
     """Generate one image with a pre-loaded pipeline."""
     full_prompt = prompt + FRAMING_SUFFIX
-    device = next(pipeline.parameters()).device
-    generator = torch.Generator(device=device).manual_seed(seed)
+    generator = torch.Generator(device=pipeline.device).manual_seed(seed)
     logger.info("generating: seed=%d resolution=1024x1024 prompt=%r", seed, full_prompt)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
