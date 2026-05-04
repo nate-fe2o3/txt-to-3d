@@ -6,6 +6,7 @@ Run with: uvicorn orchestrator.server:app --host 0.0.0.0 --port 8000
 from __future__ import annotations
 
 import logging
+import os
 import random
 import uuid
 from contextlib import asynccontextmanager
@@ -19,9 +20,10 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-# Worker URLs. Both workers run on localhost on the pod.
-IMAGE_GEN_URL = "http://localhost:8001"
-GEN_3D_URL = "http://localhost:8002"
+# Worker URLs. Override via env vars on hosts where defaults conflict (e.g. RunPod's
+# nginx template binds 8000/8001).
+IMAGE_GEN_URL = os.environ.get("IMAGE_GEN_URL", "http://localhost:9001")
+GEN_3D_URL = os.environ.get("GEN_3D_URL", "http://localhost:9002")
 
 # Where workers write artifacts. Gateway reads bytes back from here.
 OUTPUTS_DIR = Path("/workspace/outputs")
